@@ -9,10 +9,7 @@ import SwiftUI
 
 @main
 struct SleepSchedulerApp: App {
-    init() {
-        // Optional: Set icon programmatically
-        NSApplication.shared.applicationIconImage = NSImage(named: "AppIcon")
-    }
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     var body: some Scene {
         WindowGroup {
