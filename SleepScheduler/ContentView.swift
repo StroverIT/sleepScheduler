@@ -141,11 +141,17 @@ struct ContentView: View {
                 "Your computer will sleep at \(sleepTime.formatted(date: .omitted, time: .shortened))" :
                 "Your computer will sleep in \(hoursDelay)h \(minutesDelay)m"
         )
+
         
-        if !showTimePicker {
-            let totalSeconds = (hoursDelay * 3600) + (minutesDelay * 60)
-            statusBarManager.startCountdown(totalSeconds: TimeInterval(totalSeconds))
+        let totalSeconds: TimeInterval
+
+        if showTimePicker {
+            totalSeconds = sleepTime.timeIntervalSinceNow
+        } else {
+            totalSeconds = TimeInterval((hoursDelay * 3600) + (minutesDelay * 60))
         }
+
+        statusBarManager.startCountdown(totalSeconds: totalSeconds)
     }
     
     private func cancelSchedule() {
