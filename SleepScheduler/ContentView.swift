@@ -1,10 +1,64 @@
 import SwiftUI
 import UserNotifications
+import AppKit
 
+
+class StatusBarItemManager {
+    private var statusItem: NSStatusItem?
+    private var timer: Timer?
+    private var timeRemaining: TimeInterval = 0
+    
+    
+    func setup() {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        updateMenuBarTitle()
+    }
+    
+    func startCountdown(totalSeconds: TimeInterval) {
+        timeRemaining = totalSeconds
+        print("test+++ Starting countdown with \(totalSeconds) seconds")
+        timer?.invalidate()
+        
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            
+            if self.timeRemaining > 0 {
+                self.timeRemaining -= 1
+                self.updateMenuBarTitle()
+            } else {
+                self.timer?.invalidate()
+                self.updateMenuBarTitle()
+            }
+        }
+    }
+    
+    func stopCountdown() {
+        timer?.invalidate()
+        timeRemaining = 0
+        updateMenuBarTitle()
+    }
+    
+    private func updateMenuBarTitle() {
+        guard let button = statusItem?.button else { return }
+        
+        if timeRemaining > 0 {
+            let hours = Int(timeRemaining) / 3600
+            let minutes = (Int(timeRemaining) % 3600) / 60
+            
+            // Format as HH:MM
+            let timeString = String(format: "%02d:%02d", hours, minutes)
+            button.title = "⏰ \(timeString)"
+        } 
+        // else {
+        //     button.title = "⏰"
+        // }
+    }
+}
 
 class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().delegate = self
+        NSApp.setActivationPolicy(.accessory)
     }
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, 
@@ -15,6 +69,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
 }
 
 struct ContentView: View {
+    @State private var statusBarManager = StatusBarItemManager()
     @State private var selectedTime = Date()
     @State private var hoursDelay: Int = 1
     @State private var minutesDelay: Int = 0
@@ -112,6 +167,7 @@ struct ContentView: View {
             listPendingNotifications()
             requestNotificationPermission()
             checkExistingSchedule()
+            statusBarManager.setup()
         }
        .alert(isPresented: $showAlert) {
         Alert(
@@ -334,6 +390,11 @@ struct ContentView: View {
             alertMessage = "Failed to schedule sleep: \(error.localizedDescription)"
             showAlert = true
         }
+
+         if !showTimePicker { // Only for duration mode
+            let totalSeconds = (hoursDelay * 3600) + (minutesDelay * 60)
+            statusBarManager.startCountdown(totalSeconds: TimeInterval(totalSeconds))
+        }
     }
     
     func sendConfirmationNotification(sleepTime: Date, amount: String) {
@@ -468,6 +529,9 @@ struct ContentView: View {
     }
     
     func cancelSchedule() {
+        statusBarManager.stopCountdown()
+        timeRemaining = 0
+
         guard !currentPlistLabel.isEmpty else { return }
         
         let launchAgentsURL = FileManager.default.homeDirectoryForCurrentUser
